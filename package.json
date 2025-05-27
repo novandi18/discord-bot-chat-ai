@@ -1,0 +1,20 @@
+{
+  "name": "chat-ai",
+  "version": "1.0.0",
+  "description": "Smart Discord Chat AI",
+  "license": "ISC",
+  "author": "Novandi Ramadhan",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@google/genai": "^1.1.0",
+    "axios": "^1.9.0",
+    "discord.js": "^14.19.3",
+    "dotenv": "^16.5.0",
+    "openai": "^4.103.0",
+    "openapi": "^1.0.1"
+  }
+}
