@@ -8,6 +8,7 @@ import {
 } from "discord.js";
 import { getGptResponse } from "./openai/gptHandler.js";
 import { getGeminiResponse } from "./gemini/geminiHandler.js";
+import { generateImagen3 } from "./gemini/imagenHandler.js";
 import {
   GUILD_ID,
   DISCORD_BOT_TOKEN,
@@ -15,6 +16,7 @@ import {
   OPENAI_MODEL,
   GEMINI_FLASH_MODEL,
   GEMINI_PRO_MODEL,
+  IMAGEN_MODEL,
 } from "./config.js";
 import { splitMessage } from "./utils/util.js";
 
@@ -22,6 +24,7 @@ const modelChoices = [
   { name: "GPT-4o", value: OPENAI_MODEL },
   { name: "Gemini 2.5 Flash", value: GEMINI_FLASH_MODEL },
   { name: "Gemini 2.5 Pro", value: GEMINI_PRO_MODEL },
+  { name: "Imagen 3", value: IMAGEN_MODEL },
 ];
 
 const commands = [
@@ -46,22 +49,8 @@ const commands = [
 
 const rest = new REST({ version: "10" }).setToken(DISCORD_BOT_TOKEN);
 
-async function resetGuildCommands() {
-  try {
-    await rest.put(
-      Routes.applicationGuildCommands(DISCORD_BOT_CLIENT_ID, GUILD_ID),
-      { body: [] }
-    );
-    console.log("All guild slash commands have been deleted!");
-  } catch (error) {
-    console.error(error);
-  }
-}
-
 async function main() {
   try {
-    await resetGuildCommands();
-
     await rest.put(
       Routes.applicationGuildCommands(DISCORD_BOT_CLIENT_ID, GUILD_ID),
       { body: commands }
@@ -94,8 +83,14 @@ async function main() {
             model === GEMINI_PRO_MODEL
           ) {
             response = await getGeminiResponse(prompt, model);
-          } else {
-            response = "Model is not recognized.";
+          } else if (model === IMAGEN_MODEL) {
+            const filePaths = await generateImagen3(prompt);
+            response = "Image generated.";
+            await interaction.editReply(response);
+            for (const filePath of filePaths) {
+              await interaction.followUp({ files: [filePath] });
+            }
+            return;
           }
 
           const messages = splitMessage(

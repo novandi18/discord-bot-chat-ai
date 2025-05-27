@@ -6,6 +6,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_FLASH_MODEL = process.env.GEMINI_FLASH_MODEL;
 const GEMINI_PRO_MODEL = process.env.GEMINI_PRO_MODEL;
 const OPENAI_MODEL = process.env.OPENAI_MODEL;
+const IMAGEN_MODEL = process.env.IMAGEN_MODEL;
 
 // Discord Bot Credentials
 const GUILD_ID = process.env.GUILD_ID;
@@ -18,6 +19,7 @@ export {
   GEMINI_FLASH_MODEL,
   GEMINI_PRO_MODEL,
   OPENAI_MODEL,
+  IMAGEN_MODEL,
   GUILD_ID,
   DISCORD_BOT_CLIENT_ID,
   DISCORD_BOT_TOKEN,
