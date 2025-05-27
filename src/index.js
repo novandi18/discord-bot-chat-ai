@@ -7,8 +7,10 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 import { getGptResponse } from "./openai/gptHandler.js";
-import { getGeminiResponse } from "./gemini/geminiHandler.js";
-import { generateImagen3 } from "./gemini/imagenHandler.js";
+import { getGeminiResponse } from "./google/geminiHandler.js";
+import { mediaQueue } from "./utils/queueHandler.js";
+import { handleHelpCommand } from "./utils/helpHandler.js";
+import { handleQueueCommand } from "./utils/queueStatusHandler.js";
 import {
   GUILD_ID,
   DISCORD_BOT_TOKEN,
@@ -17,6 +19,7 @@ import {
   GEMINI_FLASH_MODEL,
   GEMINI_PRO_MODEL,
   IMAGEN_MODEL,
+  VEO_MODEL,
 } from "./config.js";
 import { splitMessage } from "./utils/util.js";
 
@@ -25,12 +28,13 @@ const modelChoices = [
   { name: "Gemini 2.5 Flash", value: GEMINI_FLASH_MODEL },
   { name: "Gemini 2.5 Pro", value: GEMINI_PRO_MODEL },
   { name: "Imagen 3", value: IMAGEN_MODEL },
+  { name: "Veo 2", value: VEO_MODEL },
 ];
 
 const commands = [
   new SlashCommandBuilder()
-    .setName("chat")
-    .setDescription("Chat with AI")
+    .setName("ai")
+    .setDescription("Generate with AI")
     .addStringOption((option) =>
       option
         .setName("model")
@@ -44,6 +48,16 @@ const commands = [
         .setDescription("Message to send to AI")
         .setRequired(true)
     )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("queue")
+    .setDescription("Check generation queue status")
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("help")
+    .setDescription("Show bot commands and usage information")
     .toJSON(),
 ];
 
@@ -68,37 +82,45 @@ async function main() {
 
     client.on("interactionCreate", async (interaction) => {
       if (!interaction.isChatInputCommand()) return;
-      if (interaction.commandName === "chat") {
+
+      if (interaction.commandName === "ai") {
         await interaction.deferReply({
-          content: "Reasoning...",
+          content: "AI is thinking...",
         });
         const model = interaction.options.getString("model");
         const prompt = interaction.options.getString("prompt");
         try {
           let response;
+
           if (model === OPENAI_MODEL) {
             response = await getGptResponse(prompt, model);
+            const messages = splitMessage(
+              typeof response === "string" ? response : JSON.stringify(response)
+            );
+            await interaction.editReply(messages[0]);
+            for (let i = 1; i < messages.length; i++) {
+              await interaction.followUp(messages[i]);
+            }
           } else if (
             model === GEMINI_FLASH_MODEL ||
             model === GEMINI_PRO_MODEL
           ) {
             response = await getGeminiResponse(prompt, model);
-          } else if (model === IMAGEN_MODEL) {
-            const filePaths = await generateImagen3(prompt);
-            response = "Image generated.";
-            await interaction.editReply(response);
-            for (const filePath of filePaths) {
-              await interaction.followUp({ files: [filePath] });
+            const messages = splitMessage(
+              typeof response === "string" ? response : JSON.stringify(response)
+            );
+            await interaction.editReply(messages[0]);
+            for (let i = 1; i < messages.length; i++) {
+              await interaction.followUp(messages[i]);
             }
-            return;
-          }
-
-          const messages = splitMessage(
-            typeof response === "string" ? response : JSON.stringify(response)
-          );
-          await interaction.editReply(messages[0]);
-          for (let i = 1; i < messages.length; i++) {
-            await interaction.followUp(messages[i]);
+          } else if (model === IMAGEN_MODEL) {
+            // Tambahkan ke antrian image
+            await mediaQueue.addToQueue(interaction, prompt, "image");
+          } else if (model === VEO_MODEL) {
+            // Tambahkan ke antrian video
+            await mediaQueue.addToQueue(interaction, prompt, "video");
+          } else {
+            await interaction.editReply("Model is not recognized.");
           }
         } catch (err) {
           console.error("Error processing command:", err);
@@ -106,6 +128,10 @@ async function main() {
             "An error occurred while processing the request."
           );
         }
+      } else if (interaction.commandName === "queue") {
+        await handleQueueCommand(interaction);
+      } else if (interaction.commandName === "help") {
+        await handleHelpCommand(interaction);
       }
     });
 
