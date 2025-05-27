@@ -12,7 +12,17 @@ import {
   GUILD_ID,
   DISCORD_BOT_TOKEN,
   DISCORD_BOT_CLIENT_ID,
+  OPENAI_MODEL,
+  GEMINI_FLASH_MODEL,
+  GEMINI_PRO_MODEL,
 } from "./config.js";
+import { splitMessage } from "./utils/util.js";
+
+const modelChoices = [
+  { name: "GPT-4o", value: OPENAI_MODEL },
+  { name: "Gemini 2.5 Flash", value: GEMINI_FLASH_MODEL },
+  { name: "Gemini 2.5 Pro", value: GEMINI_PRO_MODEL },
+];
 
 const commands = [
   new SlashCommandBuilder()
@@ -23,10 +33,7 @@ const commands = [
         .setName("model")
         .setDescription("Choose AI model:")
         .setRequired(true)
-        .addChoices(
-          { name: "GPT-4o", value: "gpt" },
-          { name: "Gemini 2.5 Flash", value: "gemini" }
-        )
+        .addChoices(...modelChoices)
     )
     .addStringOption((option) =>
       option
@@ -39,8 +46,22 @@ const commands = [
 
 const rest = new REST({ version: "10" }).setToken(DISCORD_BOT_TOKEN);
 
+async function resetGuildCommands() {
+  try {
+    await rest.put(
+      Routes.applicationGuildCommands(DISCORD_BOT_CLIENT_ID, GUILD_ID),
+      { body: [] }
+    );
+    console.log("All guild slash commands have been deleted!");
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 async function main() {
   try {
+    await resetGuildCommands();
+
     await rest.put(
       Routes.applicationGuildCommands(DISCORD_BOT_CLIENT_ID, GUILD_ID),
       { body: commands }
@@ -59,19 +80,31 @@ async function main() {
     client.on("interactionCreate", async (interaction) => {
       if (!interaction.isChatInputCommand()) return;
       if (interaction.commandName === "chat") {
+        await interaction.deferReply({
+          content: "Reasoning...",
+        });
         const model = interaction.options.getString("model");
         const prompt = interaction.options.getString("prompt");
-        await interaction.deferReply();
         try {
           let response;
-          if (model === "gpt") {
-            response = await getGptResponse(prompt);
-          } else if (model === "gemini") {
-            response = await getGeminiResponse(prompt);
+          if (model === OPENAI_MODEL) {
+            response = await getGptResponse(prompt, model);
+          } else if (
+            model === GEMINI_FLASH_MODEL ||
+            model === GEMINI_PRO_MODEL
+          ) {
+            response = await getGeminiResponse(prompt, model);
           } else {
             response = "Model is not recognized.";
           }
-          await interaction.editReply(response);
+
+          const messages = splitMessage(
+            typeof response === "string" ? response : JSON.stringify(response)
+          );
+          await interaction.editReply(messages[0]);
+          for (let i = 1; i < messages.length; i++) {
+            await interaction.followUp(messages[i]);
+          }
         } catch (err) {
           console.error("Error processing command:", err);
           await interaction.editReply(
