@@ -4,57 +4,68 @@ export function createHelpEmbed() {
   const embed = new EmbedBuilder()
     .setColor(0x0099ff)
     .setTitle("AI Bot Help")
-    .setDescription("Here are the available commands and models:")
+    .setDescription("Guide for using this Discord AI bot.")
     .addFields(
       {
-        name: "Commands",
-        value: `/ai - Generate content with AI models
-/queue - Check generation queue status
-/help - Show this help message`,
+        name: "Main Commands",
+        value: [
+          "`/ai` - Generate content with AI models (text, image, or video)",
+          "`/queue` - View the current image/video generation queue",
+          "`/help` - Show this help message",
+          "`/reset` - Delete all slash commands (admin)",
+          "`/reload` - Re-register all slash commands (admin)",
+        ].join("\n"),
         inline: false,
       },
       {
         name: "Available AI Models",
-        value: `**Text Models:**
-• GPT-4o - OpenAI's latest text model
-• Gemini 2.5 Flash - Fast Google AI model
-• Gemini 2.5 Pro - Advanced Google AI model
-
-**Media Models:**
-• Imagen 3 - Generate high-quality images
-• Veo 2 - Generate videos (queued processing)`,
+        value: [
+          "**Text Models:**",
+          "- GPT-4o (OpenAI)",
+          "- Gemini 2.5 Flash (Google)",
+          "- Gemini 2.5 Pro (Google)",
+          "",
+          "**Media Models:**",
+          "- Imagen 3 (Image, Google)",
+          "- Veo 2 (Video, Google, automatic queue)",
+        ].join("\n"),
         inline: false,
       },
       {
         name: "How to Use",
-        value: `1. Type /ai to start
-2. Choose your desired model from the dropdown
-3. Enter your prompt in the text field
-4. Submit and wait for the AI to respond
-
-**Note:** Image and video generation use a queue system to prevent overload.`,
+        value: [
+          "1. Type `/ai` and select the desired AI model.",
+          "2. Enter your prompt or instruction.",
+          "3. Submit and wait for the AI to respond.",
+          "",
+          "For image/video generation, your request will be automatically queued and processed one by one.",
+        ].join("\n"),
         inline: false,
       },
       {
-        name: "Processing Times",
-        value: `• Text Models: Few seconds
-• Image Generation: 30-60 seconds
-• Video Generation: 2-5 minutes
-
-Video and image requests are processed in order through a queue system.`,
+        name: "Estimated Processing Time",
+        value: [
+          "- Text models: a few seconds",
+          "- Image generation: 30-60 seconds",
+          "- Video generation: 2-5 minutes (depending on queue)",
+          "",
+          "Use `/queue` to check your position in the queue.",
+        ].join("\n"),
         inline: false,
       },
       {
-        name: "Tips",
-        value: `• Be specific in your prompts for better results
-• Use /queue to check your position in the generation queue
-• Text responses are automatically split if they exceed Discord's character limit
-• All generated media is saved locally on the server`,
+        name: "Usage Tips",
+        value: [
+          "- Use clear and specific prompts for best results.",
+          "- Text responses are automatically split if they exceed 2000 characters.",
+          "- All generated media is saved on the server.",
+          "- If you encounter an error, please try again later.",
+        ].join("\n"),
         inline: false,
       }
     )
     .setFooter({
-      text: "Smart Discord Chat AI • Made by Novandi Ramadhan",
+      text: "Smart Discord Chat AI",
     })
     .setTimestamp();
 

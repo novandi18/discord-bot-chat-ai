@@ -12,6 +12,10 @@ import { mediaQueue } from "./utils/queueHandler.js";
 import { handleHelpCommand } from "./utils/helpHandler.js";
 import { handleQueueCommand } from "./utils/queueStatusHandler.js";
 import {
+  handleResetCommands,
+  handleReloadCommands,
+} from "./utils/reloadHandler.js";
+import {
   GUILD_ID,
   DISCORD_BOT_TOKEN,
   DISCORD_BOT_CLIENT_ID,
@@ -31,7 +35,7 @@ const modelChoices = [
   { name: "Veo 2", value: VEO_MODEL },
 ];
 
-const commands = [
+export const commands = [
   new SlashCommandBuilder()
     .setName("ai")
     .setDescription("Generate with AI")
@@ -58,6 +62,16 @@ const commands = [
   new SlashCommandBuilder()
     .setName("help")
     .setDescription("Show bot commands and usage information")
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("reset")
+    .setDescription("Reset (delete) all guild slash commands")
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("reload")
+    .setDescription("Reload (register) all guild slash commands")
     .toJSON(),
 ];
 
@@ -132,6 +146,10 @@ async function main() {
         await handleQueueCommand(interaction);
       } else if (interaction.commandName === "help") {
         await handleHelpCommand(interaction);
+      } else if (interaction.commandName === "reset") {
+        await handleResetCommands(interaction);
+      } else if (interaction.commandName === "reload") {
+        await handleReloadCommands(interaction);
       }
     });
 
