@@ -1,4 +1,7 @@
 import "dotenv/config";
+import fs from "node:fs";
+import path from "path";
+import axios from "axios";
 import {
   Client,
   GatewayIntentBits,
@@ -15,73 +18,93 @@ import {
   handleResetCommands,
   handleReloadCommands,
 } from "./utils/reloadHandler.js";
+import { splitMessage } from "./utils/util.js";
 import {
   GUILD_ID,
-  DISCORD_BOT_TOKEN,
   DISCORD_BOT_CLIENT_ID,
+  DISCORD_BOT_TOKEN,
   OPENAI_MODEL,
   GEMINI_FLASH_MODEL,
   GEMINI_PRO_MODEL,
   IMAGEN_MODEL,
   VEO_MODEL,
+  GEMINI_IMAGE_EDIT_MODEL,
 } from "./config.js";
-import { splitMessage } from "./utils/util.js";
 
-// Global Error Handlers
-process.on("uncaughtException", (error) => {
-  console.error("❌ Uncaught Exception:", error);
-});
-
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("❌ Unhandled Rejection at:", promise);
-  console.error("Reason:", reason);
-});
-
-const modelChoices = [
+// define /chat model choices
+const chatModels = [
   { name: "GPT-4o", value: OPENAI_MODEL },
   { name: "Gemini 2.5 Flash", value: GEMINI_FLASH_MODEL },
   { name: "Gemini 2.5 Pro", value: GEMINI_PRO_MODEL },
-  { name: "Imagen 3", value: IMAGEN_MODEL },
-  { name: "Veo 2", value: VEO_MODEL },
 ];
 
 export const commands = [
   new SlashCommandBuilder()
-    .setName("ai")
-    .setDescription("Generate with AI")
+    .setName("chat")
+    .setDescription("Chat with text AI models")
     .addStringOption((option) =>
       option
         .setName("model")
-        .setDescription("Choose AI model:")
+        .setDescription("Choose a text model")
         .setRequired(true)
-        .addChoices(...modelChoices)
+        .addChoices(...chatModels)
+    )
+    .addStringOption((option) =>
+      option.setName("prompt").setDescription("Your message").setRequired(true)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("video")
+    .setDescription(`Generate a video using Veo 2`)
+    .addStringOption((option) =>
+      option.setName("prompt").setDescription("Video prompt").setRequired(true)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("image")
+    .setDescription(`Generate an image using Imagen 3`)
+    .addStringOption((option) =>
+      option.setName("prompt").setDescription("Image prompt").setRequired(true)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("edit_image")
+    .setDescription(`Edit an image using Gemini 2.0 Flash Image Generation`)
+    .addAttachmentOption((option) =>
+      option
+        .setName("image")
+        .setDescription("Upload image to edit")
+        .setRequired(true)
     )
     .addStringOption((option) =>
       option
         .setName("prompt")
-        .setDescription("Message to send to AI")
+        .setDescription("Edit instructions")
         .setRequired(true)
     )
     .toJSON(),
 
   new SlashCommandBuilder()
     .setName("queue")
-    .setDescription("Check generation queue status")
+    .setDescription("View generation queue status")
     .toJSON(),
 
   new SlashCommandBuilder()
     .setName("help")
-    .setDescription("Show bot commands and usage information")
+    .setDescription("Show bot commands")
     .toJSON(),
 
   new SlashCommandBuilder()
     .setName("reset")
-    .setDescription("Reset (delete) all guild slash commands")
+    .setDescription("Reset all slash commands (admin)")
     .toJSON(),
 
   new SlashCommandBuilder()
     .setName("reload")
-    .setDescription("Reload (register) all guild slash commands")
+    .setDescription("Reload all slash commands (admin)")
     .toJSON(),
 ];
 
@@ -89,11 +112,12 @@ const rest = new REST({ version: "10" }).setToken(DISCORD_BOT_TOKEN);
 
 async function main() {
   try {
+    // register slash commands
     await rest.put(
       Routes.applicationGuildCommands(DISCORD_BOT_CLIENT_ID, GUILD_ID),
       { body: commands }
     );
-    console.log("✅ Slash command registered!");
+    console.log("✅ Registered slash commands.");
 
     const client = new Client({
       intents: [
@@ -104,109 +128,122 @@ async function main() {
       ],
     });
 
-    // Discord Client Error Handler
-    client.on("error", (error) => {
-      console.error("❌ Discord Client Error:", error);
-    });
-
     client.on("interactionCreate", async (interaction) => {
       if (!interaction.isChatInputCommand()) return;
 
       try {
-        if (interaction.commandName === "ai") {
-          // Hanya defer untuk command AI yang butuh processing lama
-          await interaction.deferReply({
-            content: "AI is thinking...",
-          });
+        switch (interaction.commandName) {
+          case "chat": {
+            await interaction.deferReply();
+            const model = interaction.options.getString("model");
+            const prompt = interaction.options.getString("prompt");
 
-          const model = interaction.options.getString("model");
-          const prompt = interaction.options.getString("prompt");
-
-          try {
             let response;
-
             if (model === OPENAI_MODEL) {
               response = await getGptResponse(prompt, model);
-              const messages = splitMessage(
-                typeof response === "string"
-                  ? response
-                  : JSON.stringify(response)
-              );
-              await interaction.editReply(messages[0]);
-              for (let i = 1; i < messages.length; i++) {
-                await interaction.followUp(messages[i]);
-              }
-            } else if (
-              model === GEMINI_FLASH_MODEL ||
-              model === GEMINI_PRO_MODEL
-            ) {
-              response = await getGeminiResponse(prompt, model);
-              const messages = splitMessage(
-                typeof response === "string"
-                  ? response
-                  : JSON.stringify(response)
-              );
-              await interaction.editReply(messages[0]);
-              for (let i = 1; i < messages.length; i++) {
-                await interaction.followUp(messages[i]);
-              }
-            } else if (model === IMAGEN_MODEL) {
-              await mediaQueue.addToQueue(interaction, prompt, "image");
-            } else if (model === VEO_MODEL) {
-              await mediaQueue.addToQueue(interaction, prompt, "video");
             } else {
-              await interaction.editReply("Model is not recognized.");
+              response = await getGeminiResponse(prompt, model);
             }
-          } catch (err) {
-            console.error("❌ Error processing AI command:", err);
-            try {
-              await interaction.editReply(
-                "An error occurred while processing the request. Please try again later."
-              );
-            } catch (replyError) {
-              console.error("❌ Error sending error reply:", replyError);
+            const parts = splitMessage(
+              typeof response === "string" ? response : JSON.stringify(response)
+            );
+            await interaction.editReply(parts[0]);
+            for (let i = 1; i < parts.length; i++) {
+              await interaction.followUp(parts[i]);
             }
+            break;
           }
-        } else if (interaction.commandName === "queue") {
-          await handleQueueCommand(interaction);
-        } else if (interaction.commandName === "help") {
-          await handleHelpCommand(interaction);
-        } else if (interaction.commandName === "reset") {
-          await handleResetCommands(interaction);
-        } else if (interaction.commandName === "reload") {
-          await handleReloadCommands(interaction);
+
+          case "video": {
+            await interaction.deferReply(
+              "⏳ Queued video generation with Veo 2"
+            );
+            const prompt = interaction.options.getString("prompt");
+            await mediaQueue.addToQueue(interaction, prompt, "video");
+            break;
+          }
+
+          case "image": {
+            await interaction.deferReply(
+              "⏳ Queued image generation with Imagen 3"
+            );
+            const prompt = interaction.options.getString("prompt");
+            await mediaQueue.addToQueue(interaction, prompt, "image");
+            break;
+          }
+
+          case "edit_image": {
+            await interaction.deferReply(
+              "⏳ Queued image editing with Gemini 2.0 Flash"
+            );
+            const attachment = interaction.options.getAttachment("image");
+            const prompt = interaction.options.getString("prompt");
+
+            // validate format
+            const name = attachment.name.toLowerCase();
+            if (
+              !name.endsWith(".png") &&
+              !name.endsWith(".jpg") &&
+              !name.endsWith(".jpeg")
+            ) {
+              return interaction.editReply("❌ Only PNG/JPG allowed.");
+            }
+            // download to uploads/
+            const uploadsDir = path.resolve("./uploads");
+            if (!fs.existsSync(uploadsDir))
+              fs.mkdirSync(uploadsDir, { recursive: true });
+            const localName = `${Date.now()}_${attachment.name}`;
+            const localPath = path.join(uploadsDir, localName);
+            const resp = await axios.get(attachment.url, {
+              responseType: "arraybuffer",
+            });
+            fs.writeFileSync(localPath, Buffer.from(resp.data), "binary");
+
+            await mediaQueue.addToQueue(
+              interaction,
+              { prompt, imagePath: localPath },
+              "gemini-edit"
+            );
+            break;
+          }
+
+          case "queue":
+            await handleQueueCommand(interaction);
+            break;
+
+          case "help":
+            await handleHelpCommand(interaction);
+            break;
+
+          case "reset":
+            await handleResetCommands(interaction);
+            break;
+
+          case "reload":
+            await handleReloadCommands(interaction);
+            break;
         }
       } catch (err) {
-        console.error("❌ Error in interaction handler:", err);
-        try {
-          if (!interaction.replied && !interaction.deferred) {
-            await interaction.reply({
-              content: "An unexpected error occurred. Please try again later.",
-              flags: 64, // Ephemeral flag yang benar
-            });
-          } else if (interaction.deferred) {
-            await interaction.editReply(
-              "An unexpected error occurred. Please try again later."
-            );
-          }
-        } catch (replyError) {
-          console.error("❌ Error sending error reply:", replyError);
+        console.error("❌ Interaction error:", err);
+        if (!interaction.deferred && !interaction.replied) {
+          await interaction.reply({
+            content: "Error occurred.",
+            ephemeral: true,
+          });
+        } else {
+          await interaction.editReply("Error occurred.");
         }
       }
     });
 
     client.on("ready", () => {
-      console.log(`✅ Bot is ready! Logged in as ${client.user.tag}`);
+      console.log(`✅ Logged in as ${client.user.tag}`);
     });
 
     await client.login(DISCORD_BOT_TOKEN);
-    console.log("🚀 Bot is running...");
-  } catch (error) {
-    console.error("❌ Error in main function:", error);
-    setTimeout(() => {
-      console.log("🔄 Attempting to restart main function...");
-      main();
-    }, 5000);
+  } catch (err) {
+    console.error("❌ Startup error:", err);
+    setTimeout(main, 5000);
   }
 }
 
