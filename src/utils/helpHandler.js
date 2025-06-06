@@ -65,7 +65,7 @@ export function createHelpEmbed() {
       }
     )
     .setFooter({
-      text: "Smart Discord Chat AI",
+      text: "Smart Discord Chat AI • Novandi Ramadhan",
     })
     .setTimestamp();
 
@@ -75,12 +75,21 @@ export function createHelpEmbed() {
 export async function handleHelpCommand(interaction) {
   try {
     const helpEmbed = createHelpEmbed();
-    await interaction.reply({ embeds: [helpEmbed], ephemeral: true });
-  } catch (error) {
-    console.error("Error sending help message:", error);
     await interaction.reply({
-      content: "An error occurred while displaying help information.",
-      ephemeral: true,
+      embeds: [helpEmbed],
+      flags: 64, // Gunakan flags: 64 untuk ephemeral, bukan ephemeral: true
     });
+  } catch (error) {
+    console.error("❌ Error sending help message:", error);
+    try {
+      if (!interaction.replied) {
+        await interaction.reply({
+          content: "An error occurred while displaying help information.",
+          flags: 64,
+        });
+      }
+    } catch (replyError) {
+      console.error("❌ Error sending error reply:", replyError);
+    }
   }
 }

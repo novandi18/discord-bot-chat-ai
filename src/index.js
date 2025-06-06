@@ -27,6 +27,16 @@ import {
 } from "./config.js";
 import { splitMessage } from "./utils/util.js";
 
+// Global Error Handlers
+process.on("uncaughtException", (error) => {
+  console.error("❌ Uncaught Exception:", error);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("❌ Unhandled Rejection at:", promise);
+  console.error("Reason:", reason);
+});
+
 const modelChoices = [
   { name: "GPT-4o", value: OPENAI_MODEL },
   { name: "Gemini 2.5 Flash", value: GEMINI_FLASH_MODEL },
@@ -83,7 +93,7 @@ async function main() {
       Routes.applicationGuildCommands(DISCORD_BOT_CLIENT_ID, GUILD_ID),
       { body: commands }
     );
-    console.log("Slash command registered!");
+    console.log("✅ Slash command registered!");
 
     const client = new Client({
       intents: [
@@ -94,69 +104,109 @@ async function main() {
       ],
     });
 
+    // Discord Client Error Handler
+    client.on("error", (error) => {
+      console.error("❌ Discord Client Error:", error);
+    });
+
     client.on("interactionCreate", async (interaction) => {
       if (!interaction.isChatInputCommand()) return;
 
-      if (interaction.commandName === "ai") {
-        await interaction.deferReply({
-          content: "AI is thinking...",
-        });
-        const model = interaction.options.getString("model");
-        const prompt = interaction.options.getString("prompt");
-        try {
-          let response;
+      try {
+        if (interaction.commandName === "ai") {
+          // Hanya defer untuk command AI yang butuh processing lama
+          await interaction.deferReply({
+            content: "AI is thinking...",
+          });
 
-          if (model === OPENAI_MODEL) {
-            response = await getGptResponse(prompt, model);
-            const messages = splitMessage(
-              typeof response === "string" ? response : JSON.stringify(response)
-            );
-            await interaction.editReply(messages[0]);
-            for (let i = 1; i < messages.length; i++) {
-              await interaction.followUp(messages[i]);
+          const model = interaction.options.getString("model");
+          const prompt = interaction.options.getString("prompt");
+
+          try {
+            let response;
+
+            if (model === OPENAI_MODEL) {
+              response = await getGptResponse(prompt, model);
+              const messages = splitMessage(
+                typeof response === "string"
+                  ? response
+                  : JSON.stringify(response)
+              );
+              await interaction.editReply(messages[0]);
+              for (let i = 1; i < messages.length; i++) {
+                await interaction.followUp(messages[i]);
+              }
+            } else if (
+              model === GEMINI_FLASH_MODEL ||
+              model === GEMINI_PRO_MODEL
+            ) {
+              response = await getGeminiResponse(prompt, model);
+              const messages = splitMessage(
+                typeof response === "string"
+                  ? response
+                  : JSON.stringify(response)
+              );
+              await interaction.editReply(messages[0]);
+              for (let i = 1; i < messages.length; i++) {
+                await interaction.followUp(messages[i]);
+              }
+            } else if (model === IMAGEN_MODEL) {
+              await mediaQueue.addToQueue(interaction, prompt, "image");
+            } else if (model === VEO_MODEL) {
+              await mediaQueue.addToQueue(interaction, prompt, "video");
+            } else {
+              await interaction.editReply("Model is not recognized.");
             }
-          } else if (
-            model === GEMINI_FLASH_MODEL ||
-            model === GEMINI_PRO_MODEL
-          ) {
-            response = await getGeminiResponse(prompt, model);
-            const messages = splitMessage(
-              typeof response === "string" ? response : JSON.stringify(response)
-            );
-            await interaction.editReply(messages[0]);
-            for (let i = 1; i < messages.length; i++) {
-              await interaction.followUp(messages[i]);
+          } catch (err) {
+            console.error("❌ Error processing AI command:", err);
+            try {
+              await interaction.editReply(
+                "An error occurred while processing the request. Please try again later."
+              );
+            } catch (replyError) {
+              console.error("❌ Error sending error reply:", replyError);
             }
-          } else if (model === IMAGEN_MODEL) {
-            // Tambahkan ke antrian image
-            await mediaQueue.addToQueue(interaction, prompt, "image");
-          } else if (model === VEO_MODEL) {
-            // Tambahkan ke antrian video
-            await mediaQueue.addToQueue(interaction, prompt, "video");
-          } else {
-            await interaction.editReply("Model is not recognized.");
           }
-        } catch (err) {
-          console.error("Error processing command:", err);
-          await interaction.editReply(
-            "An error occurred while processing the request."
-          );
+        } else if (interaction.commandName === "queue") {
+          await handleQueueCommand(interaction);
+        } else if (interaction.commandName === "help") {
+          await handleHelpCommand(interaction);
+        } else if (interaction.commandName === "reset") {
+          await handleResetCommands(interaction);
+        } else if (interaction.commandName === "reload") {
+          await handleReloadCommands(interaction);
         }
-      } else if (interaction.commandName === "queue") {
-        await handleQueueCommand(interaction);
-      } else if (interaction.commandName === "help") {
-        await handleHelpCommand(interaction);
-      } else if (interaction.commandName === "reset") {
-        await handleResetCommands(interaction);
-      } else if (interaction.commandName === "reload") {
-        await handleReloadCommands(interaction);
+      } catch (err) {
+        console.error("❌ Error in interaction handler:", err);
+        try {
+          if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({
+              content: "An unexpected error occurred. Please try again later.",
+              flags: 64, // Ephemeral flag yang benar
+            });
+          } else if (interaction.deferred) {
+            await interaction.editReply(
+              "An unexpected error occurred. Please try again later."
+            );
+          }
+        } catch (replyError) {
+          console.error("❌ Error sending error reply:", replyError);
+        }
       }
     });
 
-    client.login(DISCORD_BOT_TOKEN);
-    console.log("Bot is running...");
+    client.on("ready", () => {
+      console.log(`✅ Bot is ready! Logged in as ${client.user.tag}`);
+    });
+
+    await client.login(DISCORD_BOT_TOKEN);
+    console.log("🚀 Bot is running...");
   } catch (error) {
-    console.error("Error registering slash command or running bot:", error);
+    console.error("❌ Error in main function:", error);
+    setTimeout(() => {
+      console.log("🔄 Attempting to restart main function...");
+      main();
+    }, 5000);
   }
 }
 
