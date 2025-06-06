@@ -128,6 +128,8 @@ async function main() {
       ],
     });
 
+    let videoUsage = { date: null, count: 0 };
+
     client.on("interactionCreate", async (interaction) => {
       if (!interaction.isChatInputCommand()) return;
 
@@ -155,6 +157,23 @@ async function main() {
           }
 
           case "video": {
+            // reset counter when the day changes
+            const today = new Date().toISOString().slice(0, 10);
+            if (videoUsage.date !== today) {
+              videoUsage.date = today;
+              videoUsage.count = 0;
+            }
+
+            // enforce 5‐per‐day limit
+            if (videoUsage.count >= 5) {
+              return interaction.reply({
+                content:
+                  "❌ You’ve reached the daily limit of 5 video generations. Try again tomorrow!",
+                ephemeral: true,
+              });
+            }
+            videoUsage.count++;
+
             await interaction.deferReply(
               "⏳ Queued video generation with Veo 2"
             );

@@ -11,14 +11,14 @@ export function createHelpEmbed() {
       {
         name: "🛠️ Main Commands",
         value: [
-          "`/chat`    - Chat with text models (GPT-4o, Gemini 2.5 Flash/Pro)",
-          "`/video`   - Generate videos (Veo 2) **automatically queued**",
-          "`/image`   - Generate images (Imagen 3) **automatically queued**",
+          "`/chat`       - Chat with text models (GPT-4o, Gemini 2.5 Flash/Pro)",
+          "`/video`      - Generate videos (Veo 2) **automatically queued**",
+          "`/image`      - Generate images (Imagen 3) **automatically queued**",
           "`/edit_image` - Edit images (Gemini 2.0 Flash) **automatically queued**",
-          "`/queue`   - Check the media generation queue",
-          "`/help`    - Display this help message",
-          "`/reset`   - Remove all slash commands",
-          "`/reload`  - Re-register all slash commands",
+          "`/queue`      - Check the media generation queue",
+          "`/help`       - Display this help message",
+          "`/reset`      - Remove all slash commands (admin)",
+          "`/reload`     - Re-register all slash commands (admin)",
         ].join("\n"),
       },
       {
@@ -32,17 +32,20 @@ export function createHelpEmbed() {
       {
         name: "🎞️ Video Generation",
         value:
-          "The **Veo 2** model creates stunning videos based on your prompt. Requests are automatically queued for processing.",
+          "The **Veo 2** model creates stunning videos based on your prompt. " +
+          "You can generate up to **5 videos per day**. Requests are automatically queued for processing.",
       },
       {
         name: "🖼️ Image Generation",
         value:
-          "The **Imagen 3** model generates beautiful images from your prompt. Requests are automatically queued for processing.",
+          "The **Imagen 3** model generates beautiful images from your prompt. " +
+          "Requests are automatically queued for processing.",
       },
       {
         name: "✂️ Image Editing",
         value:
-          "The **Gemini 2.0 Flash** model edits your uploaded images based on your instructions. Requests are automatically queued for processing.",
+          "The **Gemini 2.0 Flash** model edits your uploaded images based on your instructions. " +
+          "Requests are automatically queued for processing.",
       },
       {
         name: "📋 How to Use",
@@ -57,10 +60,10 @@ export function createHelpEmbed() {
       {
         name: "⏱️ Estimated Processing Time",
         value: [
-          "- Text models: A few seconds",
-          "- Image generation: 30–60 seconds",
-          "- Image editing: 30–60 seconds",
-          "- Video generation: 2–5 minutes (depending on queue length)",
+          "- Text models: a few seconds",
+          "- Image generation: 30-60 seconds",
+          "- Image editing: 30-60 seconds",
+          "- Video generation: 2-5 minutes (depending on queue length)",
           "",
           "Use `/queue` to check your position in the queue.",
         ].join("\n"),
@@ -68,9 +71,9 @@ export function createHelpEmbed() {
       {
         name: "💡 Prompt Tips",
         value: [
-          "- Be specific: “Add a sunset background”",
-          "- For editing, describe the changes you want in detail",
-          "- Avoid overly generic prompts: “Make it better”",
+          "- Be specific: “Add a sunset background.”",
+          "- For editing, describe the changes you want in detail.",
+          "- Avoid overly generic prompts: “Make it better.”",
         ].join("\n"),
       }
     )
@@ -93,7 +96,7 @@ export async function handleHelpCommand(interaction) {
       if (!interaction.replied) {
         await interaction.reply({
           content: "An error occurred while displaying help information.",
-          flags: 64,
+          flags: 64, // ephemeral
         });
       }
     } catch (replyError) {
