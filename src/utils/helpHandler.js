@@ -29,11 +29,12 @@ export function createHelpEmbed() {
       {
         name: "🤖 AI Models at a Glance",
         value: [
-          "- **GPT-4o**: Conversational and creative text generation (OpenAI).",
+          "- **GPT-4o**: Great for most tasks (OpenAI).",
           "- **Gemini 2.5 Flash & Pro**: Fast or high-quality text (Google).",
           "- **Imagen 3, 4 Standard & Ultra**: Stunning still images (Google).",
           "- **Veo 2**: Dynamic short videos from text prompts (Google).",
           "- **Gemini 2.0 Flash Image Generation**: Smart edits on your uploaded photos.",
+          "- **4o-mini**: Fastest at advanced reasoning (OpenAI).",
         ].join("\n"),
       },
       {
