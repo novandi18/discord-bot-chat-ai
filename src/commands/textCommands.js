@@ -31,7 +31,13 @@ export const textCommands = {
       .addAttachmentOption((option) =>
         option
           .setName("image")
-          .setDescription("Optional image to include in the prompt")
+          .setDescription("Optional image (o4-mini is not supported)")
+          .setRequired(false)
+      )
+      .addAttachmentOption((option) =>
+        option
+          .setName("pdf")
+          .setDescription("Attach a PDF file (max 20MB, Gemini only)")
           .setRequired(false)
       )
       .toJSON(),
@@ -44,38 +50,52 @@ export const textCommands = {
       const model = interaction.options.getString("model");
       const prompt = interaction.options.getString("prompt");
       const attachment = interaction.options.getAttachment("image");
+      const pdfAttachment = interaction.options.getAttachment("pdf");
+      let pdfPath = null;
+      let localPath = null;
 
       try {
         if (model === GEMINI_FLASH_MODEL || model === GEMINI_PRO_MODEL) {
-          let localPath = null;
           if (attachment) {
             localPath = await downloadImageToLocal(
               attachment.url,
               `${Date.now()}_${attachment.name}`
             );
           }
+
+          if (
+            pdfAttachment &&
+            (pdfAttachment.contentType !== "application/pdf" ||
+              pdfAttachment.size > 20 * 1024 * 1024)
+          ) {
+            await interaction.editReply(
+              "❌ Only 1 PDF file (max 20MB) is allowed."
+            );
+            return;
+          }
+
+          if (pdfAttachment) {
+            pdfPath = await downloadImageToLocal(
+              pdfAttachment.url,
+              `${Date.now()}_${pdfAttachment.name}`
+            );
+          }
+
           const result = await getGeminiMultimodalResponse(
             prompt,
             localPath,
-            model
+            model,
+            pdfPath
           );
 
-          if (result.text) {
-            await interaction.editReply(result.text);
-          } else {
-            await interaction.editReply("No response from Gemini.");
+          const messages = splitMessage(result);
+          await interaction.editReply(messages[0]);
+          for (let i = 1; i < messages.length; i++) {
+            await interaction.followUp(messages[i]);
           }
-          for (const base64 of result.images) {
-            const buffer = Buffer.from(base64, "base64");
-            const fileName = `gemini_output_${Date.now()}.png`;
-            const imagesDir = path.resolve("./images");
-            if (!fs.existsSync(imagesDir))
-              fs.mkdirSync(imagesDir, { recursive: true });
-            const filePath = path.join(imagesDir, fileName);
-            fs.writeFileSync(filePath, buffer);
-            await interaction.followUp({ files: [filePath] });
-          }
+
           if (localPath) fs.unlinkSync(localPath);
+          if (pdfPath) fs.unlinkSync(pdfPath);
           return;
         }
 

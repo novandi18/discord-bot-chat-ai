@@ -2,34 +2,46 @@ import {
   GoogleGenAI,
   createUserContent,
   createPartFromUri,
-  Modality,
 } from "@google/genai";
 import fs from "fs";
-import path from "path";
 import { GEMINI_API_KEY } from "../config.js";
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
-export async function getGeminiMultimodalResponse(prompt, imagePath, model) {
-  let contents;
+export async function getGeminiMultimodalResponse(
+  prompt,
+  imagePath,
+  model,
+  pdfPath = null
+) {
+  const parts = [prompt];
+
   if (imagePath) {
     const image = await ai.files.upload({ file: imagePath });
-    contents = [
-      createUserContent([prompt, createPartFromUri(image.uri, image.mimeType)]),
-    ];
-  } else {
-    contents = [createUserContent([prompt])];
+    parts.push(createPartFromUri(image.uri, image.mimeType));
   }
+
+  if (pdfPath) {
+    const pdfBuffer = fs.readFileSync(pdfPath);
+    parts.push({
+      inlineData: {
+        mimeType: "application/pdf",
+        data: pdfBuffer.toString("base64"),
+      },
+    });
+  }
+
+  const contents = [createUserContent(parts)];
 
   const response = await ai.models.generateContent({
     model,
     contents,
   });
 
-  const parts = response.candidates?.[0]?.content?.parts || [];
+  const respParts = response.candidates?.[0]?.content?.parts || [];
   let text = "";
-  for (const part of parts) {
+  for (const part of respParts) {
     if (part.text) text += part.text;
   }
-  return { text, images: [] };
+  return text;
 }
