@@ -2,16 +2,16 @@ import { AzureOpenAI } from "openai";
 import {
   AZURE_API_KEY,
   AZURE_ENDPOINT,
-  AZURE_GPT_4o_DEPLOYMENT_NAME,
+  AZURE_GPT_4O_DEPLOYMENT_NAME,
   AZURE_API_VERSION,
-  AZURE_GPT_4o_NAME,
+  AZURE_GPT_4O_NAME,
 } from "../config.js";
 
 const endpoint = AZURE_ENDPOINT;
-const deployment = AZURE_GPT_4o_DEPLOYMENT_NAME;
+const deployment = AZURE_GPT_4O_DEPLOYMENT_NAME;
 const apiKey = AZURE_API_KEY;
 const apiVersion = AZURE_API_VERSION;
-const modelName = AZURE_GPT_4o_NAME;
+const modelName = AZURE_GPT_4O_NAME;
 
 const options = { endpoint, apiKey, deployment, apiVersion };
 const client = new AzureOpenAI(options);

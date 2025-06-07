@@ -4,7 +4,7 @@ import { getGptResponse } from "../openai/gptHandler.js";
 import { getGeminiMultimodalResponse } from "../google/geminiHandler.js";
 import { splitMessage, downloadImageToLocal } from "../utils/util.js";
 import {
-  AZURE_GPT_4o_NAME,
+  AZURE_GPT_4O_NAME,
   GEMINI_FLASH_MODEL,
   GEMINI_PRO_MODEL,
 } from "../config.js";
@@ -77,7 +77,7 @@ export const textCommands = {
           return;
         }
 
-        if (model === AZURE_GPT_4o_NAME) {
+        if (model === AZURE_GPT_4O_NAME) {
           let imageUrl = null;
           if (attachment) {
             imageUrl = attachment.url;

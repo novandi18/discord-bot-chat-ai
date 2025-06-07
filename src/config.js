@@ -1,8 +1,5 @@
-// Api Keys
-const AZURE_API_KEY = process.env.AZURE_API_KEY;
+// Google Gemini
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
-// AI Models
 const GEMINI_FLASH_MODEL = process.env.GEMINI_FLASH_MODEL;
 const GEMINI_PRO_MODEL = process.env.GEMINI_PRO_MODEL;
 const GEMINI_IMAGE_EDIT_MODEL = process.env.GEMINI_IMAGE_EDIT_MODEL;
@@ -11,16 +8,19 @@ const IMAGEN_4_STANDARD_MODEL = process.env.IMAGEN_4_STANDARD_MODEL;
 const IMAGEN_4_ULTRA_MODEL = process.env.IMAGEN_4_ULTRA_MODEL;
 const VEO_MODEL = process.env.VEO_MODEL;
 
-// Discord Bot Credentials
+// Discord Configuration
 const GUILD_ID = process.env.GUILD_ID;
 const DISCORD_BOT_CLIENT_ID = process.env.DISCORD_BOT_CLIENT_ID;
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 
-// Azure
+// Azure OpenAI Service
+const AZURE_API_KEY = process.env.AZURE_API_KEY;
 const AZURE_ENDPOINT = process.env.AZURE_ENDPOINT;
-const AZURE_GPT_4o_NAME = process.env.AZURE_GPT_4o_NAME;
-const AZURE_GPT_4o_DEPLOYMENT_NAME = process.env.AZURE_GPT_4o_DEPLOYMENT_NAME;
 const AZURE_API_VERSION = process.env.AZURE_API_VERSION;
+
+// Azure OpenAI GPT-4o
+const AZURE_GPT_4O_NAME = process.env.AZURE_GPT_4O_NAME;
+const AZURE_GPT_4O_DEPLOYMENT_NAME = process.env.AZURE_GPT_4O_DEPLOYMENT_NAME;
 
 export {
   GEMINI_API_KEY,
@@ -36,7 +36,7 @@ export {
   DISCORD_BOT_TOKEN,
   AZURE_API_KEY,
   AZURE_ENDPOINT,
-  AZURE_GPT_4o_NAME,
-  AZURE_GPT_4o_DEPLOYMENT_NAME,
+  AZURE_GPT_4O_NAME,
+  AZURE_GPT_4O_DEPLOYMENT_NAME,
   AZURE_API_VERSION,
 };
