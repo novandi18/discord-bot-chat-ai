@@ -35,6 +35,7 @@ export function createHelpEmbed() {
           "- **Veo 2**: Dynamic short videos from text prompts (Google).",
           "- **Gemini 2.0 Flash Image Generation**: Smart edits on your uploaded photos.",
           "- **4o-mini**: Fastest at advanced reasoning (OpenAI).",
+          "- **Stable Diffusion 3 Large**: Open-source AI for creative images, perfect for exploring unique styles (Stability AI).",
         ].join("\n"),
       },
       {
