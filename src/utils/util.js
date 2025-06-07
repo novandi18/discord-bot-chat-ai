@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import fetch from "node-fetch";
+import { GoogleAuth } from "google-auth-library";
 
 export function splitMessage(text, maxLength = 2000) {
   const parts = [];
@@ -36,4 +37,14 @@ export async function downloadImageToLocal(url, name) {
   await fs.promises.writeFile(filePath, buffer);
 
   return filePath;
+}
+
+export async function getAccessToken() {
+  const auth = new GoogleAuth({
+    keyFilename: path.resolve(process.env.GOOGLE_APPLICATION_CREDENTIALS),
+    scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+  });
+  const client = await auth.getClient();
+  const { token } = await client.getAccessToken();
+  return token;
 }

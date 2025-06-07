@@ -22,13 +22,17 @@ import {
   OPENAI_MODEL,
   GEMINI_FLASH_MODEL,
   GEMINI_PRO_MODEL,
-  GEMINI_IMAGE_EDIT_MODEL,
-  IMAGEN_MODEL,
-  VEO_MODEL,
+  IMAGEN_3_MODEL,
 } from "./config.js";
+import {
+  TextModels,
+  VideoModels,
+  ImageModels,
+  ImageEditingModels,
+  AspectRatios,
+} from "./constants/models.js";
 import { splitMessage, downloadImageToLocal } from "./utils/util.js";
 
-// Global Error Handlers
 process.on("uncaughtException", (error) => {
   console.error("❌ Uncaught Exception:", error);
 });
@@ -38,39 +42,83 @@ process.on("unhandledRejection", (reason, promise) => {
   console.error("Reason:", reason);
 });
 
-const modelChoices = [
-  { name: "GPT-4o", value: OPENAI_MODEL },
-  { name: "Gemini 2.5 Flash", value: GEMINI_FLASH_MODEL },
-  { name: "Gemini 2.5 Pro", value: GEMINI_PRO_MODEL },
-  { name: "Gemini 2.0 Flash Image Generation", value: GEMINI_IMAGE_EDIT_MODEL },
-  { name: "Imagen 3", value: IMAGEN_MODEL },
-  { name: "Veo 2", value: VEO_MODEL },
-];
-
 export const commands = [
   new SlashCommandBuilder()
-    .setName("ai")
-    .setDescription("Generate with AI")
-    .addStringOption((option) =>
-      option
+    .setName("chat")
+    .setDescription("Generate text with AI Models")
+    .addStringOption((o) =>
+      o
         .setName("model")
-        .setDescription("Choose AI model:")
+        .setDescription("Choose model:")
         .setRequired(true)
-        .addChoices(...modelChoices)
+        .addChoices(...TextModels)
     )
-    .addStringOption((option) =>
-      option
+    .addStringOption((o) =>
+      o.setName("prompt").setDescription("Your message").setRequired(true)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("video")
+    .setDescription("Generate video with AI Models")
+    .addStringOption((o) =>
+      o
+        .setName("model")
+        .setDescription("Choose model:")
+        .setRequired(true)
+        .addChoices(...VideoModels)
+    )
+    .addStringOption((o) =>
+      o.setName("prompt").setDescription("Your prompt").setRequired(true)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("image")
+    .setDescription("Generate an image (queued)")
+    .addStringOption((o) =>
+      o
+        .setName("model")
+        .setDescription("Choose image model:")
+        .setRequired(true)
+        .addChoices(...ImageModels)
+    )
+    .addStringOption((o) =>
+      o
         .setName("prompt")
-        .setDescription("Message to send to AI")
+        .setDescription("Text prompt for image")
         .setRequired(true)
     )
-    .addAttachmentOption((option) =>
-      option
-        .setName("image")
-        .setDescription(
-          "Image to send to AI (required for Gemini 2.0 Flash Image Generation)"
-        )
+    .addStringOption((o) =>
+      o
+        .setName("aspect_ratio")
+        .setDescription("Aspect ratio (optional)")
         .setRequired(false)
+        .addChoices(...AspectRatios)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("image_edit")
+    .setDescription("Edit image with AI (queued)")
+    .addStringOption((o) =>
+      o
+        .setName("model")
+        .setDescription("Choose edit model:")
+        .setRequired(true)
+        .addChoices(...ImageEditingModels)
+    )
+    .addStringOption((o) =>
+      o
+        .setName("prompt")
+        .setDescription("Editing instructions")
+        .setRequired(true)
+    )
+    .addAttachmentOption((o) =>
+      o
+        .setName("image")
+        .setDescription("Upload an image to edit")
+        .setRequired(true)
     )
     .toJSON(),
 
@@ -123,91 +171,140 @@ async function main() {
       if (!interaction.isChatInputCommand()) return;
 
       try {
-        if (interaction.commandName === "ai") {
-          await interaction.deferReply({
-            content: "AI is thinking...",
-          });
+        switch (interaction.commandName) {
+          case "chat": {
+            await interaction.deferReply({
+              content: "Thinking...",
+            });
 
-          const model = interaction.options.getString("model");
-          const prompt = interaction.options.getString("prompt");
+            const model = interaction.options.getString("model");
+            const prompt = interaction.options.getString("prompt");
 
-          try {
-            let response;
-
-            if (model === OPENAI_MODEL) {
-              response = await getGptResponse(prompt, model);
-              const messages = splitMessage(
-                typeof response === "string"
-                  ? response
-                  : JSON.stringify(response)
-              );
-              await interaction.editReply(messages[0]);
-              for (let i = 1; i < messages.length; i++) {
-                await interaction.followUp(messages[i]);
-              }
-            } else if (
-              model === GEMINI_FLASH_MODEL ||
-              model === GEMINI_PRO_MODEL
-            ) {
-              response = await getGeminiResponse(prompt, model);
-              const messages = splitMessage(
-                typeof response === "string"
-                  ? response
-                  : JSON.stringify(response)
-              );
-              await interaction.editReply(messages[0]);
-              for (let i = 1; i < messages.length; i++) {
-                await interaction.followUp(messages[i]);
-              }
-            } else if (model === IMAGEN_MODEL) {
-              await mediaQueue.addToQueue(interaction, prompt, "image");
-            } else if (model === VEO_MODEL) {
-              await mediaQueue.addToQueue(interaction, prompt, "video");
-            } else if (model === GEMINI_IMAGE_EDIT_MODEL) {
-              const attachment = interaction.options.getAttachment("image");
-              if (!attachment) {
-                return interaction.editReply(
-                  "⚠️ For Gemini 2.0 Flash Image Generation, you must upload an image."
-                );
-              }
-              let localPath;
-              try {
-                localPath = await downloadImageToLocal(
-                  attachment.url,
-                  `${Date.now()}_${attachment.name}`
-                );
-              } catch (err) {
-                console.error("Download image gagal:", err);
-                return interaction.editReply(
-                  "❌ Failed to download image. Please try again."
-                );
-              }
-              await mediaQueue.addToQueue(
-                interaction,
-                { prompt, tmpPath: localPath },
-                "edit"
-              );
-            } else {
-              await interaction.editReply("Model is not recognized.");
-            }
-          } catch (err) {
-            console.error("❌ Error processing AI command:", err);
             try {
-              await interaction.editReply(
-                "An error occurred while processing the request. Please try again later."
-              );
-            } catch (replyError) {
-              console.error("❌ Error sending error reply:", replyError);
+              let response;
+
+              if (model === OPENAI_MODEL) {
+                response = await getGptResponse(prompt, model);
+                const messages = splitMessage(
+                  typeof response === "string"
+                    ? response
+                    : JSON.stringify(response)
+                );
+                await interaction.editReply(messages[0]);
+                for (let i = 1; i < messages.length; i++) {
+                  await interaction.followUp(messages[i]);
+                }
+              } else if (
+                model === GEMINI_FLASH_MODEL ||
+                model === GEMINI_PRO_MODEL
+              ) {
+                response = await getGeminiResponse(prompt, model);
+                const messages = splitMessage(
+                  typeof response === "string"
+                    ? response
+                    : JSON.stringify(response)
+                );
+                await interaction.editReply(messages[0]);
+                for (let i = 1; i < messages.length; i++) {
+                  await interaction.followUp(messages[i]);
+                }
+              } else {
+                await interaction.editReply("Model is not recognized.");
+              }
+            } catch (err) {
+              console.error("❌ Error processing AI command:", err);
+              try {
+                await interaction.editReply(
+                  "An error occurred while processing the request. Please try again later."
+                );
+              } catch (replyError) {
+                console.error("❌ Error sending error reply:", replyError);
+              }
             }
+            break;
           }
-        } else if (interaction.commandName === "queue") {
-          await handleQueueCommand(interaction);
-        } else if (interaction.commandName === "help") {
-          await handleHelpCommand(interaction);
-        } else if (interaction.commandName === "reset") {
-          await handleResetCommands(interaction);
-        } else if (interaction.commandName === "reload") {
-          await handleReloadCommands(interaction);
+
+          case "image": {
+            await interaction.deferReply({
+              content: "Generating image...",
+            });
+
+            const prompt = interaction.options.getString("prompt");
+            const model = interaction.options.getString("model");
+            const type = model === IMAGEN_3_MODEL ? "imagen3" : "imagen4";
+            const aspectRatio =
+              interaction.options.getString("aspect_ratio") || "1:1";
+
+            await mediaQueue.addToQueue(
+              interaction,
+              { prompt, model, aspectRatio },
+              type
+            );
+
+            break;
+          }
+
+          case "video": {
+            await interaction.deferReply({
+              content: "Generating video...",
+            });
+
+            await mediaQueue.addToQueue(interaction, { prompt }, "video");
+            break;
+          }
+
+          case "image_edit": {
+            await interaction.deferReply({
+              content: "Editing your image...",
+            });
+
+            const prompt = interaction.options.getString("prompt");
+            const attachment = interaction.options.getAttachment("image");
+            if (!attachment) {
+              return interaction.editReply("⚠️ You must upload an image.");
+            }
+
+            let localPath;
+            try {
+              localPath = await downloadImageToLocal(
+                attachment.url,
+                `${Date.now()}_${attachment.name}`
+              );
+            } catch (err) {
+              console.error("Failed to download image:", err);
+              return interaction.editReply(
+                "❌ Failed to download image. Please try again."
+              );
+            }
+
+            await mediaQueue.addToQueue(
+              interaction,
+              { prompt, tmpPath: localPath },
+              "edit"
+            );
+
+            break;
+          }
+
+          case "queue": {
+            await handleQueueCommand(interaction);
+            break;
+          }
+
+          case "help": {
+            await handleHelpCommand(interaction);
+            break;
+          }
+
+          case "reset": {
+            await handleResetCommands(interaction);
+            break;
+          }
+
+          case "reload": {
+            await handleReloadCommands(interaction);
+            break;
+          }
         }
       } catch (err) {
         console.error("❌ Error in interaction handler:", err);

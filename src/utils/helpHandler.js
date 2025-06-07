@@ -1,79 +1,74 @@
 import { EmbedBuilder } from "discord.js";
 
 export function createHelpEmbed() {
-  const embed = new EmbedBuilder()
-    .setColor(0x0099ff)
-    .setTitle("📖 AI Bot Help")
-    .setDescription("Here's how to use the AI Bot with all available features:")
+  return new EmbedBuilder()
+    .setColor(0x1abc9c)
+    .setTitle("🚀 Zen AI Bot — Your Creative Companion")
+    .setDescription(
+      "Ready to explore the power of AI? Here's everything you need to know:"
+    )
     .addFields(
       {
-        name: "🛠️ Main Commands",
+        name: "⚙️ Core Commands",
         value: [
-          "**/ai** - Generate text, images, videos, or edit an image with AI. Choose your model and enter a prompt. (Upload an image when using the image-edit model.)",
-          "**/queue** - Check the current media processing queue and your position.",
-          "**/help** - Show this help message again (ephemeral).",
-          "**/reset** - Delete all guild slash commands.",
-          "**/reload** - Re-register all guild slash commands.",
+          "**/chat** — Spark a conversation or get creative text from GPT-4o or Gemini.",
+          "**/image** — Generate original images with Imagen 3 & 4 (choose your aspect ratio!).",
+          "**/video** — Craft short videos using Veo 2. Just pick a prompt and watch it unfold.",
+          "**/image_edit** — Upload an image and describe the tweaks. Gemini will handle the rest.",
         ].join("\n"),
       },
       {
-        name: "🤖 Available Models",
+        name: "🔧 Utility Commands",
         value: [
-          "- **GPT-4o** (OpenAI) — advanced conversational text.",
-          "- **Gemini 2.5 Flash** (Google) — fast text generation.",
-          "- **Gemini 2.5 Pro** (Google) — high-quality text for complex prompts.",
-          "- **Gemini 2.0 Flash Image Generation** (Google) — edit your uploaded images.",
-          "- **Imagen 3** (Google) — generate images from prompts.",
-          "- **Veo 2** (Google) — generate short videos from prompts.",
+          "**/queue** — See where you are in the media generation queue.",
+          "**/help** — Bring up this guide anytime (only you can see it).",
+          "**/reset** — Remove all slash commands from this server.",
+          "**/reload** — Re-register all slash commands after updates.",
         ].join("\n"),
       },
       {
-        name: "📋 How to Use `/ai`",
+        name: "🤖 AI Models at a Glance",
         value: [
-          "1. Type `/ai` and select your **model**.",
-          "2. Enter your **prompt** describing what you want.",
-          "3. If you selected **Gemini Image Edit**, upload your image in the **image** option.",
-          "4. Submit and wait—the bot will show your queue position.",
-          "5. The result will appear as follow-up messages when ready.",
+          "- **GPT-4o**: Conversational and creative text generation (OpenAI).",
+          "- **Gemini 2.5 Flash & Pro**: Fast or high-quality text (Google).",
+          "- **Imagen 3, 4 Standard & Ultra**: Stunning still images (Google).",
+          "- **Veo 2**: Dynamic short videos from text prompts (Google).",
+          "- **Gemini 2.0 Flash Image Generation**: Smart edits on your uploaded photos.",
         ].join("\n"),
       },
       {
         name: "⏱️ Estimated Processing Times",
         value: [
-          "- **Text**: a few seconds",
-          "- **Image gen & edit**: ~30-60 seconds (queued)",
-          "- **Video gen**: ~2-5 minutes (queued)",
+          "- **Text**: nearly instant",
+          "- **Images & Edits**: ~30-60 seconds (queued)",
+          "- **Videos**: ~2-5 minutes (queued)",
           "",
-          "Use `/queue` at any time to see your position.",
+          "Use **/queue** at any time to check your spot!",
         ].join("\n"),
       },
       {
-        name: "💡 Tips for Better Prompts",
+        name: "💡 Pro Tips for Better Prompts",
         value: [
-          "- Be specific: e.g. “Add dramatic lighting.”",
-          "- For edits: describe exactly what to change.",
-          "- Avoid vague requests like “Make it cool.”",
+          "- Be descriptive: “Add golden hour lighting” instead of “make it bright.”",
+          "- For edits: clearly specify what and where to change.",
+          "- Experiment with styles: “in the style of Studio Ghibli,” “futuristic sci-fi,” etc.",
+          "- Mention aspect ratio for images if you have a preferred format.",
         ].join("\n"),
       }
     )
     .setFooter({ text: "Zen AI • Novandi Ramadhan" })
     .setTimestamp();
-
-  return embed;
 }
 
 export async function handleHelpCommand(interaction) {
   try {
     const helpEmbed = createHelpEmbed();
-    await interaction.reply({
-      embeds: [helpEmbed],
-      ephemeral: true,
-    });
+    await interaction.reply({ embeds: [helpEmbed], ephemeral: true });
   } catch (error) {
-    console.error("❌ Error sending help message:", error);
+    console.error("❌ Error sending help embed:", error);
     if (!interaction.replied) {
       await interaction.reply({
-        content: "An error occurred while displaying help information.",
+        content: "😕 Oops! Couldn't display the help menu.",
         ephemeral: true,
       });
     }

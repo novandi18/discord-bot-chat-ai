@@ -6,144 +6,154 @@ class Queue {
     this.delay = delay;
   }
 
-  async addToQueue(interaction, prompt, type = "video") {
-    const queueItem = {
+  async addToQueue(interaction, data, type) {
+    this.queue.push({
       interaction,
-      prompt,
+      data,
       type,
       timestamp: Date.now(),
-    };
+    });
 
-    this.queue.push(queueItem);
-    const position = this.queue.length;
+    const pos = this.queue.length;
+    const emoji =
+      type === "video"
+        ? "🎬"
+        : type === "imagen3" || type === "imagen4"
+        ? "🎨"
+        : "✏️";
 
-    const emoji = type === "video" ? "🎬" : type === "image" ? "🎨" : "✏️";
-    const typeText =
+    const text =
       type === "video"
         ? "video generation"
-        : type === "image"
-        ? "image generation"
+        : type === "imagen3"
+        ? "imagen3 generation"
+        : type === "imagen4"
+        ? "imagen4 generation"
         : "image editing";
 
     await interaction.editReply(
-      `${emoji} Added to ${typeText} queue. Position: ${position}`
+      `${emoji} Added to ${text} queue. Position: ${pos}`
     );
 
-    if (!this.isProcessing) {
-      this.processQueue();
-    }
+    if (!this.isProcessing) this.processQueue();
   }
 
   async processQueue() {
-    if (this.queue.length === 0) {
+    if (!this.queue.length) {
       this.isProcessing = false;
       return;
     }
-
     this.isProcessing = true;
-    const { interaction, prompt, type } = this.queue.shift();
+
+    const { interaction, data, type } = this.queue.shift();
 
     try {
-      const emoji = type === "video" ? "🎬" : type === "image" ? "🎨" : "✏️";
-      const typeText =
+      const emoji =
+        type === "video"
+          ? "🎬"
+          : type === "imagen3" || type === "imagen4"
+          ? "🎨"
+          : "✏️";
+
+      const text =
         type === "video"
           ? "video"
-          : type === "image"
-          ? "image"
-          : "image editing";
+          : type === "imagen3"
+          ? "imagen3 image"
+          : type === "imagen4"
+          ? "imagen4 image"
+          : "edited image";
 
-      await interaction.editReply(
-        `${emoji} Your ${typeText} is now being generated, this may take a few minutes...`
-      );
+      await interaction.editReply(`${emoji} Processing your ${text}...`);
 
-      let filePaths;
+      let files;
       if (type === "video") {
         const { generateVeo } = await import("../google/veoHandler.js");
-        filePaths = await generateVeo(prompt);
-      } else if (type === "image") {
+        files = await generateVeo(data.prompt);
+      } else if (type === "imagen3") {
         const { generateImagen3 } = await import("../google/imagenHandler.js");
-        filePaths = await generateImagen3(prompt);
-      } else if (type === "edit") {
+        files = await generateImagen3(data.prompt, data.aspectRatio);
+      } else if (type === "imagen4") {
+        const { generateImagen4 } = await import("../google/imagen4Handler.js");
+        files = await generateImagen4(
+          data.prompt,
+          data.sampleCount || 1,
+          data.model,
+          data.aspectRatio
+        );
+        files = files.map((p, i) => ({
+          buffer: Buffer.from(p.bytesBase64Encoded, "base64"),
+          name: `image_${i + 1}.${p.mimeType.split("/")[1]}`,
+        }));
+      } else {
         const { generateGeminiEdit } = await import(
           "../google/geminiImageEditHandler.js"
         );
-        filePaths = await generateGeminiEdit(prompt.prompt, prompt.tmpPath);
+        files = await generateGeminiEdit(data.prompt, data.tmpPath);
       }
 
-      if (filePaths && filePaths.length > 0) {
-        await interaction.editReply({
-          content: `${emoji} Here is your ${typeText}:`,
-          files: [filePaths[0]],
-        });
-        for (let i = 1; i < filePaths.length; i++) {
-          await interaction.followUp({ files: [filePaths[i]] });
+      if (files && files.length) {
+        if (type === "imagen4") {
+          await interaction.editReply({
+            files: [{ attachment: files[0].buffer, name: files[0].name }],
+          });
+          for (let i = 1; i < files.length; i++)
+            await interaction.followUp({
+              files: [{ attachment: files[i].buffer, name: files[i].name }],
+            });
+        } else {
+          await interaction.editReply({ files: [files[0]] });
+          for (let i = 1; i < files.length; i++)
+            await interaction.followUp({ files: [files[i]] });
         }
       } else {
-        await interaction.editReply(
-          `${
-            typeText.charAt(0).toUpperCase() + typeText.slice(1)
-          } generated, but no file found.`
-        );
+        await interaction.editReply(`❌ No file generated for ${text}.`);
       }
-    } catch (err) {
-      console.error(`Error generating ${type}:`, err);
-      await interaction.editReply(
-        `An error occurred while generating the ${type}.`
-      );
+    } catch (e) {
+      console.error(`Error generating ${type}:`, e);
+      await interaction.editReply(`❌ Error generating ${type}.`);
     }
-
-    // Update posisi antrian untuk semua item yang masih menunggu
     this.updateQueuePositions();
-
-    // Proses item berikutnya setelah delay
-    setTimeout(() => {
-      this.processQueue();
-    }, this.delay);
+    setTimeout(() => this.processQueue(), this.delay);
   }
 
   async updateQueuePositions() {
     for (let i = 0; i < this.queue.length; i++) {
       const { interaction, type } = this.queue[i];
+      const emoji =
+        type === "video"
+          ? "🎬"
+          : type === "imagen3" || type === "imagen4"
+          ? "🎨"
+          : "✏️";
+      const text =
+        type === "video"
+          ? "video generation"
+          : type === "imagen3"
+          ? "imagen3 generation"
+          : type === "imagen4"
+          ? "imagen4 generation"
+          : "image editing queue";
       try {
-        const emoji = type === "video" ? "🎬" : type === "image" ? "🎨" : "✏️";
-        const typeText =
-          type === "video"
-            ? "video generation"
-            : type === "image"
-            ? "image generation"
-            : "image editing queue";
-
         await interaction.editReply(
-          `${emoji} In queue for ${typeText}. Position: ${i + 1}`
+          `${emoji} In queue for ${text}. Position: ${i + 1}`
         );
-      } catch (err) {
-        // Interaction mungkin sudah expired, hapus dari queue
+      } catch {
         this.queue.splice(i, 1);
         i--;
       }
     }
   }
 
-  getQueueLength() {
-    return this.queue.length;
-  }
-
   getQueueInfo() {
-    const videoCount = this.queue.filter(
-      (item) => item.type === "video"
-    ).length;
-    const imageCount = this.queue.filter(
-      (item) => item.type === "image"
-    ).length;
-    const editCount = this.queue.filter((item) => item.type === "edit").length;
     return {
       total: this.queue.length,
-      video: videoCount,
-      image: imageCount,
-      edit: editCount,
+      video: this.queue.filter((i) => i.type === "video").length,
+      imagen3: this.queue.filter((i) => i.type === "imagen3").length,
+      imagen4: this.queue.filter((i) => i.type === "imagen4").length,
+      edit: this.queue.filter((i) => i.type === "edit").length,
     };
   }
 }
 
-// Export instance untuk media (video, image, and image editing)
 export const mediaQueue = new Queue("media", 3000);
