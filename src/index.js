@@ -67,7 +67,9 @@ export const commands = [
     .addAttachmentOption((option) =>
       option
         .setName("image")
-        .setDescription("Image to send to AI")
+        .setDescription(
+          "Image to send to AI (required for Gemini 2.0 Flash Image Generation)"
+        )
         .setRequired(false)
     )
     .toJSON(),
