@@ -3,7 +3,11 @@ import { TextModels } from "../constants/models.js";
 import { getGptResponse } from "../openai/gptHandler.js";
 import { getGeminiMultimodalResponse } from "../google/geminiHandler.js";
 import { getO4MiniResponse } from "../openai/o4Handler.js";
-import { splitMessage, downloadImageToLocal } from "../utils/util.js";
+import {
+  splitMessage,
+  downloadImageToLocal,
+  extractTextFromPdf,
+} from "../utils/util.js";
 import {
   AZURE_GPT_4O_NAME,
   GEMINI_FLASH_MODEL,
@@ -11,7 +15,6 @@ import {
   AZURE_O4_MINI_NAME,
 } from "../config.js";
 import fs from "fs";
-import path from "path";
 
 export const textCommands = {
   definitions: [
@@ -104,7 +107,34 @@ export const textCommands = {
           if (attachment) {
             imageUrl = attachment.url;
           }
-          const response = await getGptResponse(prompt, model, imageUrl);
+
+          if (
+            pdfAttachment &&
+            (pdfAttachment.contentType !== "application/pdf" ||
+              pdfAttachment.size > 20 * 1024 * 1024)
+          ) {
+            await interaction.editReply(
+              "❌ Only 1 PDF file (max 20MB) is allowed."
+            );
+            return;
+          }
+
+          let pdfText = "";
+          if (pdfAttachment) {
+            pdfPath = await downloadImageToLocal(
+              pdfAttachment.url,
+              `${Date.now()}_${pdfAttachment.name}`
+            );
+            pdfText = await extractTextFromPdf(pdfPath);
+            fs.unlinkSync(pdfPath);
+          }
+
+          let fullPrompt = prompt;
+          if (pdfText) {
+            fullPrompt += `\n\nThe following is the extracted text from the uploaded PDF:\n${pdfText}`;
+          }
+
+          const response = await getGptResponse(fullPrompt, model, imageUrl);
           const messages = splitMessage(response);
           await interaction.editReply(messages[0]);
           for (let i = 1; i < messages.length; i++) {

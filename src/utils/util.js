@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import fetch from "node-fetch";
 import { GoogleAuth } from "google-auth-library";
+import pdfParse from "pdf-parse";
 
 export function splitMessage(text, maxLength = 2000) {
   const parts = [];
@@ -47,4 +48,10 @@ export async function getAccessToken() {
   const client = await auth.getClient();
   const { token } = await client.getAccessToken();
   return token;
+}
+
+export async function extractTextFromPdf(filePath) {
+  const dataBuffer = await fs.promises.readFile(filePath);
+  const data = await pdfParse(dataBuffer);
+  return data.text;
 }
