@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
 import { VideoModels } from "../constants/models.js";
-import { mediaQueue } from "../utils/queueHandler.js";
+import { mediaQueue } from "../utils/queue/index.js";
 
 export const videoCommands = {
   definitions: [

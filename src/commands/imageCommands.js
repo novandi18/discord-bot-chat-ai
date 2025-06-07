@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
 import { ImageModels, AspectRatios } from "../constants/models.js";
-import { mediaQueue } from "../utils/queueHandler.js";
+import { mediaQueue } from "../utils/queue/index.js";
 import { IMAGEN_3_MODEL } from "../config.js";
 
 export const imageCommands = {

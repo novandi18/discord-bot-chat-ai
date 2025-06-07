@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
 import { ImageEditingModels } from "../constants/models.js";
-import { mediaQueue } from "../utils/queueHandler.js";
+import { mediaQueue } from "../utils/queue/index.js";
 import { downloadImageToLocal } from "../utils/util.js";
 
 export const imageEditCommands = {
