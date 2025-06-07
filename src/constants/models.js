@@ -1,5 +1,5 @@
 export const TextModels = [
-  { name: "GPT-4o", value: process.env.OPENAI_MODEL },
+  { name: "GPT-4o", value: process.env.AZURE_GPT_4o_NAME },
   { name: "Gemini 2.5 Flash", value: process.env.GEMINI_FLASH_MODEL },
   { name: "Gemini 2.5 Pro", value: process.env.GEMINI_PRO_MODEL },
 ];

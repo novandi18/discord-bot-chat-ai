@@ -55,12 +55,6 @@ export async function processImageEdit(interaction, data) {
   }
 }
 
-/**
- * Check if a file exists
- *
- * @param {string} filePath - Path to the file
- * @returns {Promise<boolean>} - Whether the file exists
- */
 async function fileExists(filePath) {
   try {
     await fs.access(filePath);
