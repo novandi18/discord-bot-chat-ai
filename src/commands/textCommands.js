@@ -2,11 +2,13 @@ import { SlashCommandBuilder } from "discord.js";
 import { TextModels } from "../constants/models.js";
 import { getGptResponse } from "../openai/gptHandler.js";
 import { getGeminiMultimodalResponse } from "../google/geminiHandler.js";
+import { getO4MiniResponse } from "../openai/o4Handler.js";
 import { splitMessage, downloadImageToLocal } from "../utils/util.js";
 import {
   AZURE_GPT_4O_NAME,
   GEMINI_FLASH_MODEL,
   GEMINI_PRO_MODEL,
+  AZURE_O4_MINI_NAME,
 } from "../config.js";
 import fs from "fs";
 import path from "path";
@@ -83,6 +85,16 @@ export const textCommands = {
             imageUrl = attachment.url;
           }
           const response = await getGptResponse(prompt, model, imageUrl);
+          const messages = splitMessage(response);
+          await interaction.editReply(messages[0]);
+          for (let i = 1; i < messages.length; i++) {
+            await interaction.followUp(messages[i]);
+          }
+          return;
+        }
+
+        if (model === AZURE_O4_MINI_NAME) {
+          const response = await getO4MiniResponse(prompt);
           const messages = splitMessage(response);
           await interaction.editReply(messages[0]);
           for (let i = 1; i < messages.length; i++) {

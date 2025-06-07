@@ -2,6 +2,7 @@ export const TextModels = [
   { name: "GPT-4o", value: process.env.AZURE_GPT_4O_NAME },
   { name: "Gemini 2.5 Flash", value: process.env.GEMINI_FLASH_MODEL },
   { name: "Gemini 2.5 Pro", value: process.env.GEMINI_PRO_MODEL },
+  { name: "o4-mini", value: process.env.AZURE_O4_MINI_NAME },
 ];
 
 export const VideoModels = [{ name: "Veo 2", value: process.env.VEO_MODEL }];
