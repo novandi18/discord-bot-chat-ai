@@ -1,6 +1,3 @@
-import fs from "node:fs";
-import path from "path";
-
 class Queue {
   constructor(name, delay = 5000) {
     this.name = name;
@@ -9,25 +6,27 @@ class Queue {
     this.delay = delay;
   }
 
-  async addToQueue(interaction, payload, type = "video") {
-    const queueItem = { interaction, payload, type, timestamp: Date.now() };
+  async addToQueue(interaction, prompt, type = "video") {
+    const queueItem = {
+      interaction,
+      prompt,
+      type,
+      timestamp: Date.now(),
+    };
+
     this.queue.push(queueItem);
     const position = this.queue.length;
 
-    let emoji, typeText;
-    if (type === "video") {
-      emoji = "🎬";
-      typeText = "video generation";
-    } else if (type === "image") {
-      emoji = "🖼️";
-      typeText = "image generation";
-    } else if (type === "gemini-edit") {
-      emoji = "✂️";
-      typeText = "image edit";
-    }
+    const emoji = type === "video" ? "🎬" : type === "image" ? "🎨" : "✏️";
+    const typeText =
+      type === "video"
+        ? "video generation"
+        : type === "image"
+        ? "image generation"
+        : "image editing";
 
     await interaction.editReply(
-      `${emoji} Added to the ${typeText} queue. Position: ${position}`
+      `${emoji} Added to ${typeText} queue. Position: ${position}`
     );
 
     if (!this.isProcessing) {
@@ -42,57 +41,61 @@ class Queue {
     }
 
     this.isProcessing = true;
-    const { interaction, payload, type } = this.queue.shift();
+    const { interaction, prompt, type } = this.queue.shift();
 
     try {
-      let successText;
+      const emoji = type === "video" ? "🎬" : type === "image" ? "🎨" : "✏️";
+      const typeText =
+        type === "video"
+          ? "video"
+          : type === "image"
+          ? "image"
+          : "image editing";
+
+      await interaction.editReply(
+        `${emoji} Your ${typeText} is now being generated, this may take a few minutes...`
+      );
+
+      let filePaths;
       if (type === "video") {
         const { generateVeo } = await import("../google/veoHandler.js");
         filePaths = await generateVeo(prompt);
       } else if (type === "image") {
         const { generateImagen3 } = await import("../google/imagenHandler.js");
         filePaths = await generateImagen3(prompt);
-      } else if (type === "gemini-edit") {
-        const { prompt, imagePath } = payload;
-        await interaction.editReply(
-          "✂️ Gemini is working its magic to edit your image..."
-        );
-
+      } else if (type === "edit") {
         const { generateGeminiEdit } = await import(
           "../google/geminiImageEditHandler.js"
         );
-        const editedFilePaths = await generateGeminiEdit(prompt, imagePath);
+        filePaths = await generateGeminiEdit(prompt.prompt, prompt.tmpPath);
+      }
 
-        if (editedFilePaths && editedFilePaths.length > 0) {
-          successText = "✅ Edited image result:";
-          await interaction.editReply({
-            content: successText,
-            files: [editedFilePaths[0]],
-          });
-          for (let i = 1; i < editedFilePaths.length; i++) {
-            await interaction.followUp({ files: [editedFilePaths[i]] });
-          }
-        } else {
-          await interaction.editReply(
-            "⚠️ The image has been edited, but no file was found."
-          );
+      if (filePaths && filePaths.length > 0) {
+        await interaction.editReply({
+          content: `${emoji} Here is your ${typeText}:`,
+          files: [filePaths[0]],
+        });
+        for (let i = 1; i < filePaths.length; i++) {
+          await interaction.followUp({ files: [filePaths[i]] });
         }
-
-        try {
-          if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-        } catch (e) {
-          console.warn("⚠️ Failed to delete old local file:", imagePath);
-        }
+      } else {
+        await interaction.editReply(
+          `${
+            typeText.charAt(0).toUpperCase() + typeText.slice(1)
+          } generated, but no file found.`
+        );
       }
     } catch (err) {
-      console.error(`❌ Error while processing ${type}:`, err);
+      console.error(`Error generating ${type}:`, err);
       await interaction.editReply(
-        `❌ An error occurred while processing ${type}.`
+        `An error occurred while generating the ${type}.`
       );
     }
 
-    await this.updateQueuePositions();
+    // Update posisi antrian untuk semua item yang masih menunggu
+    this.updateQueuePositions();
 
+    // Proses item berikutnya setelah delay
     setTimeout(() => {
       this.processQueue();
     }, this.delay);
@@ -102,21 +105,19 @@ class Queue {
     for (let i = 0; i < this.queue.length; i++) {
       const { interaction, type } = this.queue[i];
       try {
-        let emoji, typeText;
-        if (type === "video") {
-          emoji = "🎬";
-          typeText = "video generation";
-        } else if (type === "image") {
-          emoji = "🖼️";
-          typeText = "image generation";
-        } else if (type === "gemini-edit") {
-          emoji = "✂️";
-          typeText = "image edit";
-        }
+        const emoji = type === "video" ? "🎬" : type === "image" ? "🎨" : "✏️";
+        const typeText =
+          type === "video"
+            ? "video generation"
+            : type === "image"
+            ? "image generation"
+            : "image editing queue";
+
         await interaction.editReply(
-          `${emoji} Still waiting in the ${typeText} queue. Position: ${i + 1}`
+          `${emoji} In queue for ${typeText}. Position: ${i + 1}`
         );
       } catch (err) {
+        // Interaction mungkin sudah expired, hapus dari queue
         this.queue.splice(i, 1);
         i--;
       }
@@ -134,9 +135,7 @@ class Queue {
     const imageCount = this.queue.filter(
       (item) => item.type === "image"
     ).length;
-    const editCount = this.queue.filter(
-      (item) => item.type === "gemini-edit"
-    ).length;
+    const editCount = this.queue.filter((item) => item.type === "edit").length;
     return {
       total: this.queue.length,
       video: videoCount,
@@ -146,4 +145,5 @@ class Queue {
   }
 }
 
+// Export instance untuk media (video, image, and image editing)
 export const mediaQueue = new Queue("media", 3000);
