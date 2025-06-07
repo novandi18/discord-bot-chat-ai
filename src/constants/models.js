@@ -11,6 +11,7 @@ export const ImageModels = [
   { name: "Imagen 3", value: process.env.IMAGEN_3_MODEL },
   { name: "Imagen 4 Standard", value: process.env.IMAGEN_4_STANDARD_MODEL },
   { name: "Imagen 4 Ultra", value: process.env.IMAGEN_4_ULTRA_MODEL },
+  { name: "Stable Diffusion 3 Large", value: "azure_sd3_large" },
 ];
 
 export const ImageEditingModels = [

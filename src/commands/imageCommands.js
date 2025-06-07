@@ -39,9 +39,16 @@ export const imageCommands = {
 
       const prompt = interaction.options.getString("prompt");
       const model = interaction.options.getString("model");
-      const type = model === IMAGEN_3_MODEL ? "imagen3" : "imagen4";
       const aspectRatio =
         interaction.options.getString("aspect_ratio") || "1:1";
+      let type = "imagen3";
+      if (model === "azure_sd3_large") {
+        type = "sd3";
+      } else if (model === IMAGEN_3_MODEL) {
+        type = "imagen3";
+      } else {
+        type = "imagen4";
+      }
 
       await mediaQueue.addToQueue(
         interaction,

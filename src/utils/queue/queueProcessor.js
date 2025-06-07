@@ -2,9 +2,16 @@ import { processVideo } from "../processors/videoProcessor.js";
 import { processImagen3 } from "../processors/imagen3Processor.js";
 import { processImagen4 } from "../processors/imagen4Processor.js";
 import { processImageEdit } from "../processors/imageEditProcessor.js";
+import { processSD3Large } from "../processors/sd3Processor.js";
 import { QUEUE_TYPES } from "../../constants/QueueTypes.js";
 
-export { processVideo, processImagen3, processImagen4, processImageEdit };
+export {
+  processVideo,
+  processImagen3,
+  processImagen4,
+  processImageEdit,
+  processSD3Large,
+};
 
 export async function processQueueItem(item) {
   const { interaction, data, type } = item;
@@ -19,6 +26,8 @@ export async function processQueueItem(item) {
         return await processImagen4(interaction, data);
       case QUEUE_TYPES.EDIT:
         return await processImageEdit(interaction, data);
+      case QUEUE_TYPES.AZURE_SD3_LARGE:
+        return await processSD3Large(interaction, data);
       default:
         throw new Error(`Unknown queue type: ${type}`);
     }
